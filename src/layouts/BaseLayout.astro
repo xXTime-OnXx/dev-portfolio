@@ -1,0 +1,43 @@
+---
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/roboto-slab/700.css';
+import '../styles/global.css';
+import { site } from '../config/site';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = `${site.name} · Developer portfolio`, description = site.description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#8ec5e8" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        root.classList.remove('no-js');
+        try {
+          var canvas = document.createElement('canvas');
+          var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+          if (!gl) root.classList.add('no-webgl');
+        } catch (e) {
+          root.classList.add('no-webgl');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,186 @@
+:root {
+  --sky-top: #8ec5e8;
+  --sky-mid: #c3e0f0;
+  --horizon: #eef1ea;
+  --stone: #8a939a;
+  --stone-dark: #5e676e;
+  --alpine-green: #6e9a52;
+  --alpine-green-dark: #4f7a3c;
+  --signpost-yellow: #f2c230;
+  --barrier-red: #d2382f;
+  --wood-light: #ead7ae;
+  --wood-dark: #8b5e3c;
+  --ink: #1d2a33;
+  --ink-soft: #3d4b55;
+
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sign: 'Roboto Slab', Georgia, serif;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--horizon);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Sky gradient and mountain silhouette. The WebGL canvas is transparent, so
+   this also serves as the sky behind the 3D scene. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--sky-top) 0%,
+    var(--sky-mid) 40%,
+    var(--horizon) 62%
+  );
+}
+
+.backdrop::before,
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+}
+
+.backdrop::before {
+  height: 55%;
+  background: var(--stone);
+  clip-path: polygon(
+    0 60%, 12% 30%, 22% 48%, 36% 8%, 50% 40%, 62% 18%, 76% 46%, 88% 22%, 100% 44%,
+    100% 100%, 0 100%
+  );
+}
+
+.backdrop::after {
+  height: 26%;
+  background: linear-gradient(to bottom, var(--alpine-green), var(--alpine-green-dark));
+  clip-path: polygon(0 30%, 30% 10%, 60% 26%, 100% 6%, 100% 100%, 0 100%);
+}
+
+.scene {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.no-webgl .scene {
+  display: none;
+}
+
+/* Page header: name and developer identity. */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  padding: clamp(1rem, 3vw, 2.25rem);
+  max-width: min(32rem, 100%);
+}
+
+.site-header__name {
+  margin: 0;
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.site-header__tagline {
+  margin: 0.35rem 0 0;
+  font-size: clamp(0.9rem, 1.6vw, 1.05rem);
+  color: var(--ink-soft);
+}
+
+.site-header__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Text version of the closure sign. Visually hidden while the 3D scene
+   renders it; shown as a card when JavaScript or WebGL is unavailable. */
+.closure-notice {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.no-js .closure-notice,
+.no-webgl .closure-notice {
+  position: fixed;
+  z-index: 1;
+  left: 50%;
+  bottom: 12vh;
+  transform: translateX(-50%);
+  width: min(26rem, calc(100% - 2rem));
+  height: auto;
+  margin: 0;
+  padding: 1.5rem 1.75rem;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  text-align: center;
+  background: var(--wood-light);
+  border: 6px solid var(--wood-dark);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgb(29 42 51 / 0.25);
+}
+
+.closure-notice__heading {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-sign);
+  font-size: 1.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--barrier-red);
+}
+
+.closure-notice__body {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.closure-notice__note {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}

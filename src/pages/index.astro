@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TrailScene from '../components/scene/TrailScene';
+import { site, visibleContactLinks } from '../config/site';
+
+const { heading, body, note } = site.closureSign;
+---
+
+<BaseLayout>
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="scene" aria-hidden="true">
+    <TrailScene client:only="react" />
+  </div>
+
+  <header class="site-header">
+    <h1 class="site-header__name">{site.name}</h1>
+    <p class="site-header__tagline">{site.tagline}</p>
+    {
+      visibleContactLinks.length > 0 && (
+        <ul class="site-header__links">
+          {visibleContactLinks.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </header>
+
+  <main>
+    <section class="closure-notice" aria-labelledby="closure-heading">
+      <h2 id="closure-heading" class="closure-notice__heading">{heading}</h2>
+      <p class="closure-notice__body">
+        {body.map((line, i) => (i === 0 ? line : [<br />, line]))}
+      </p>
+      <p class="closure-notice__note">{note}</p>
+    </section>
+  </main>
+</BaseLayout>
