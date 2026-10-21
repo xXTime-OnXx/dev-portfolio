@@ -18,7 +18,7 @@ export function Lighting() {
         shadow-camera-near={1}
         shadow-camera-far={60}
       />
-      <fog attach="fog" args={[FOG_COLOR, 28, 135]} />
+      <fog attach="fog" args={[FOG_COLOR, 50, 650]} />
     </>
   );
 }

@@ -6,6 +6,8 @@ import { Lighting } from './Lighting';
 import { Terrain } from './Terrain';
 import { Trail } from './Trail';
 import { BARRIER_POSITION, CLOSURE_SIGN, TrailBarrier } from './TrailBarrier';
+import { Valley } from './Valley';
+import { Vegetation } from './Vegetation';
 
 interface Framing {
   fov: number;
@@ -33,7 +35,7 @@ const PORTRAIT: Framing = {
   signScreenX: 0,
   signScreenY: -0.36,
   eyeAboveSign: 1.2,
-  eyeOffsetX: -0.4,
+  eyeOffsetX: -1.1,
 };
 
 /**
@@ -89,12 +91,14 @@ export default function TrailScene() {
       dpr={[1, 1.5]}
       shadows="percentage"
       gl={{ antialias: true, alpha: true }}
-      camera={{ fov: LANDSCAPE.fov, near: 0.1, far: 300, position: [0, 1.8, 9] }}
+      camera={{ fov: LANDSCAPE.fov, near: 0.1, far: 1000, position: [0, 1.8, 9] }}
     >
       <CameraRig />
       <Lighting />
       <Suspense fallback={null}>
         <Terrain />
+        <Valley />
+        <Vegetation />
         <Trail />
         <CaveEntrance />
         <TrailBarrier />

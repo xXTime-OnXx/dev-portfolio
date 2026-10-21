@@ -1,199 +1,85 @@
 import { useMemo } from 'react';
-import {
-  BufferAttribute,
-  Color,
-  ConeGeometry,
-  CylinderGeometry,
-  IcosahedronGeometry,
-  MeshStandardMaterial,
-  PlaneGeometry,
-} from 'three';
-import { BARRIER_Z, CAVE, distanceToTrail, heightAt, seededRandom } from './landscape';
+import { BufferAttribute, Color, MathUtils, PlaneGeometry } from 'three';
+import { FLOOR_Y, WATERFALL, heightAt, seededRandom, valleyCenterX } from './landscape';
 
-const GRASS = new Color('#6e9a52');
-const GRASS_DRY = new Color('#93a35a');
-const STONE = new Color('#8a939a');
+const MEADOW = new Color('#6e9a52');
+const MEADOW_DRY = new Color('#93a35a');
+const VALLEY_FLOOR = new Color('#5c7d43');
+const PLATEAU = new Color('#5a7243');
+const GRANITE = new Color('#d6d2c8');
+const GRANITE_STREAK = new Color('#9a958b');
+const GRANITE_SHADE = new Color('#b9b4a9');
+const WET_ROCK = new Color('#6a645b');
+
+const EXTENT_X = 240;
+const NEAR_Z = 40;
+const DEPTH = 500;
+const SEGMENTS = 240;
+
+/** Granite gets vertical water streaks, as on the walls of Yosemite Valley. */
+export function graniteColor(x: number, z: number, random: () => number, target: Color): Color {
+  const streak = 0.5 + 0.5 * Math.sin(x * 0.55 + z * 0.55 + Math.sin(x * 0.13 - z * 0.11) * 4);
+  return target
+    .copy(GRANITE)
+    .lerp(GRANITE_STREAK, streak ** 3 * 0.75)
+    .lerp(GRANITE_SHADE, random() * 0.35);
+}
 
 function useGroundGeometry() {
   return useMemo(() => {
-    const geometry = new PlaneGeometry(180, 160, 150, 130);
+    // Grid spacing grows with distance: detailed near the trail, coarse far away.
+    const geometry = new PlaneGeometry(2, 1, SEGMENTS, SEGMENTS);
     geometry.rotateX(-Math.PI / 2);
-    geometry.translate(0, 0, -40);
-
     const position = geometry.attributes.position;
+
+    for (let i = 0; i < position.count; i++) {
+      const u = position.getX(i);
+      const v = 0.5 - position.getZ(i);
+      const x = EXTENT_X * Math.sign(u) * Math.abs(u) ** 1.5;
+      const z = NEAR_Z - DEPTH * v ** 1.6;
+      position.setXYZ(i, x, heightAt(x, z), z);
+    }
+    geometry.computeVertexNormals();
+
+    const normal = geometry.attributes.normal;
     const colors = new Float32Array(position.count * 3);
     const random = seededRandom(7);
-    const color = new Color();
+    const ground = new Color();
+    const rock = new Color();
 
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i);
+      const y = position.getY(i);
       const z = position.getZ(i);
-      const y = heightAt(x, z);
-      position.setY(i, y);
 
-      const rockiness = Math.min(1, Math.max(0, (y - 2.5) / 5));
-      color
-        .copy(GRASS)
-        .lerp(GRASS_DRY, random() * 0.45)
-        .lerp(STONE, rockiness);
-      colors.set([color.r, color.g, color.b], i * 3);
+      const onPlateau = MathUtils.smoothstep(y, FLOOR_Y + 10, FLOOR_Y + 22);
+      const bareDome = MathUtils.smoothstep(Math.sin(x * 0.09 + 2) * Math.cos(z * 0.07), 0.2, 0.6);
+      ground
+        .copy(z > -50 ? MEADOW : VALLEY_FLOOR)
+        .lerp(MEADOW_DRY, random() * 0.4)
+        .lerp(PLATEAU, onPlateau);
+
+      graniteColor(x, z, random, rock);
+      // Dark wet rock where the waterfall runs down the wall.
+      if ((x - valleyCenterX(z)) * WATERFALL.side > 0) {
+        rock.lerp(WET_ROCK, 1 - MathUtils.smoothstep(Math.abs(z - WATERFALL.z), 2, 6));
+      }
+      const steep = MathUtils.smoothstep(1 - normal.getY(i), 0.22, 0.45);
+      ground.lerp(rock, Math.max(steep, onPlateau * bareDome * 0.85));
+      colors.set([ground.r, ground.g, ground.b], i * 3);
     }
 
     geometry.setAttribute('color', new BufferAttribute(colors, 3));
-    geometry.computeVertexNormals();
     return geometry;
   }, []);
-}
-
-interface Mountain {
-  x: number;
-  z: number;
-  radius: number;
-  height: number;
-  rotation: number;
-  color: string;
-}
-
-const MOUNTAINS: Mountain[] = [
-  { x: -64, z: -92, radius: 28, height: 24, rotation: 0.3, color: '#7d878f' },
-  { x: -32, z: -84, radius: 22, height: 21, rotation: 1.1, color: '#8a939a' },
-  { x: 0, z: -100, radius: 30, height: 31, rotation: 0.7, color: '#78828a' },
-  { x: 34, z: -86, radius: 24, height: 23, rotation: 2.1, color: '#858f97' },
-  { x: 68, z: -96, radius: 28, height: 27, rotation: 0.2, color: '#7b858d' },
-  { x: -14, z: -66, radius: 15, height: 12, rotation: 1.7, color: '#929ba1' },
-  { x: 22, z: -62, radius: 13, height: 11, rotation: 0.9, color: '#959ea4' },
-];
-
-const SNOW_FRACTION = 0.3;
-
-function Mountains() {
-  const geometry = useMemo(() => new ConeGeometry(1, 1, 6, 1), []);
-  const snow = useMemo(
-    () => new MeshStandardMaterial({ color: '#f4f6f7', flatShading: true, roughness: 0.9 }),
-    [],
-  );
-
-  return (
-    <group>
-      {MOUNTAINS.map((m) => {
-        const baseY = heightAt(m.x, m.z) - 2;
-        const capHeight = m.height * SNOW_FRACTION;
-        return (
-          <group key={`${m.x}:${m.z}`} position={[m.x, baseY, m.z]} rotation-y={m.rotation}>
-            <mesh geometry={geometry} position-y={m.height / 2} scale={[m.radius, m.height, m.radius]}>
-              <meshStandardMaterial color={m.color} flatShading roughness={1} />
-            </mesh>
-            <mesh
-              geometry={geometry}
-              material={snow}
-              position-y={m.height - capHeight / 2 + 0.05}
-              scale={[m.radius * SNOW_FRACTION * 1.02, capHeight, m.radius * SNOW_FRACTION * 1.02]}
-            />
-          </group>
-        );
-      })}
-    </group>
-  );
-}
-
-interface Placement {
-  x: number;
-  y: number;
-  z: number;
-  scale: number;
-  rotation: number;
-}
-
-function scatter(
-  seed: number,
-  count: number,
-  minTrailDistance: number,
-  scaleRange: [number, number],
-): Placement[] {
-  const random = seededRandom(seed);
-  const placements: Placement[] = [];
-  let attempts = 0;
-
-  while (placements.length < count && attempts < count * 20) {
-    attempts++;
-    const x = -20 + random() * 38;
-    const z = -26 + random() * 27;
-    const nearBarrier = Math.abs(x) < 3.5 && Math.abs(z - BARRIER_Z) < 2.5;
-    const nearCave = Math.hypot(x - CAVE.x, z - CAVE.z) < 6;
-    if (nearBarrier || nearCave || distanceToTrail(x, z) < minTrailDistance) continue;
-
-    placements.push({
-      x,
-      y: heightAt(x, z),
-      z,
-      scale: scaleRange[0] + random() * (scaleRange[1] - scaleRange[0]),
-      rotation: random() * Math.PI * 2,
-    });
-  }
-  return placements;
-}
-
-function Pines() {
-  const trunk = useMemo(() => new CylinderGeometry(0.08, 0.12, 0.6, 5), []);
-  const crown = useMemo(() => new ConeGeometry(0.7, 1.4, 6), []);
-  const trunkMaterial = useMemo(() => new MeshStandardMaterial({ color: '#6b4a32', flatShading: true }), []);
-  const crownMaterial = useMemo(
-    () => new MeshStandardMaterial({ color: '#3f6b3a', flatShading: true, roughness: 1 }),
-    [],
-  );
-  const pines = useMemo(() => scatter(11, 46, 2.4, [0.8, 1.7]), []);
-
-  return (
-    <group>
-      {pines.map((p, i) => (
-        <group key={i} position={[p.x, p.y, p.z]} scale={p.scale} rotation-y={p.rotation}>
-          <mesh geometry={trunk} material={trunkMaterial} position-y={0.3} castShadow />
-          <mesh geometry={crown} material={crownMaterial} position-y={1.1} castShadow />
-          <mesh geometry={crown} material={crownMaterial} position-y={1.75} scale={0.72} castShadow />
-          <mesh geometry={crown} material={crownMaterial} position-y={2.3} scale={0.45} castShadow />
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function Boulders() {
-  const geometry = useMemo(() => new IcosahedronGeometry(1, 0), []);
-  const material = useMemo(
-    () => new MeshStandardMaterial({ color: '#9aa1a6', flatShading: true, roughness: 1 }),
-    [],
-  );
-  const boulders = useMemo(() => scatter(23, 22, 1.4, [0.2, 0.9]), []);
-
-  return (
-    <group>
-      {boulders.map((b, i) => (
-        <mesh
-          key={i}
-          geometry={geometry}
-          material={material}
-          position={[b.x, b.y + b.scale * 0.25, b.z]}
-          rotation={[b.rotation, b.rotation * 0.7, 0]}
-          scale={[b.scale * 1.2, b.scale * 0.75, b.scale]}
-          castShadow
-          receiveShadow
-        />
-      ))}
-    </group>
-  );
 }
 
 export function Terrain() {
   const ground = useGroundGeometry();
 
   return (
-    <group>
-      <mesh geometry={ground} receiveShadow>
-        <meshStandardMaterial vertexColors flatShading roughness={1} />
-      </mesh>
-      <Mountains />
-      <Pines />
-      <Boulders />
-    </group>
+    <mesh geometry={ground} receiveShadow>
+      <meshStandardMaterial vertexColors flatShading roughness={1} />
+    </mesh>
   );
 }
