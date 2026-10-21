@@ -1,0 +1,10 @@
+node_modules
+.pnpm-store
+dist
+.astro
+.git
+.idea
+.env*
+.DS_Store
+Dockerfile
+.dockerignore

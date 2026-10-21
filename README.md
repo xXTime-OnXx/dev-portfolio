@@ -24,6 +24,28 @@ Requires Node 22.22 or newer and pnpm.
 | `pnpm build` | Build the static site into `dist/` |
 | `pnpm preview` | Serve the production build locally |
 
+## Docker
+
+The image builds the static site and serves it with an unprivileged nginx on
+port 8080.
+
+```sh
+docker build -t dev-portfolio .
+docker run --rm -p 8080:8080 dev-portfolio
+```
+
+To push an image for the cluster, build for the architectures your nodes run
+(trim the list as needed):
+
+```sh
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t <registry>/dev-portfolio:<tag> --push .
+```
+
+In Kubernetes, expose container port 8080 and point the liveness and readiness
+probes at `/healthz`. The container runs as UID 101, so it works with
+`runAsNonRoot: true`.
+
 ## Project structure
 
 ```text
